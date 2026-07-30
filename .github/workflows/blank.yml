@@ -1,0 +1,23 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: self-hosted
+
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: System anzeigen
+        run: |
+          hostname
+          uname -a
+
+      - name: Tests ausführen
+        run: |
+          echo "Hello World"
