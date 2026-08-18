@@ -47,8 +47,9 @@ Create your local variable file:
 cp terraform.tfvars.example terraform.tfvars
 ```
 
-Set the real `route53_zone_id` and choose any subdomains that should resolve to
-the same public address. Then deploy:
+Set the real `route53_zone_id`. Non-secret shared deployment settings, including
+the subdomain list, live in the committed `deployment.auto.tfvars` file so local
+and CI runs always use the same values. Then deploy:
 
 ```bash
 terraform init
@@ -156,7 +157,7 @@ authentication; HTTPS encrypts the complete request in transit.
 
 ## Subdomains
 
-Configure individual CNAMEs in `terraform.tfvars`:
+Configure individual CNAMEs in the committed `deployment.auto.tfvars`:
 
 ```hcl
 subdomains = [
