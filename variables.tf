@@ -92,6 +92,12 @@ variable "github_actions_role_name" {
   default     = "dyndns-github-actions"
 }
 
+variable "github_plan_role_name" {
+  description = "Name of the read-only AWS role assumed by pull-request plans"
+  type        = string
+  default     = "dyndns-github-plan"
+}
+
 variable "create_github_oidc_provider" {
   description = "Create the account-wide GitHub Actions OIDC provider"
   type        = bool

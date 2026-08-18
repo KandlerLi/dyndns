@@ -11,9 +11,14 @@ check "hosted_zone_matches_domain" {
 }
 
 data "archive_file" "lambda" {
-  type        = "zip"
-  source_file = "${path.module}/lambda/handler.py"
-  output_path = "${path.module}/.terraform/dyndns-lambda.zip"
+  type             = "zip"
+  output_file_mode = "0644"
+  output_path      = "${path.module}/.terraform/dyndns-lambda.zip"
+
+  source {
+    content  = file("${path.module}/lambda/handler.py")
+    filename = "handler.py"
+  }
 }
 
 resource "aws_secretsmanager_secret" "credentials" {
