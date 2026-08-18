@@ -66,6 +66,7 @@ these non-secret repository variables under **Settings → Secrets and variables
 | Repository variable | Value |
 |---|---|
 | `AWS_ROLE_ARN` | `terraform output -raw github_actions_role_arn` |
+| `AWS_PLAN_ROLE_ARN` | `terraform output -raw github_plan_role_arn` |
 | `AWS_ACCOUNT_ID` | `terraform output -raw aws_account_id` |
 | `ROUTE53_ZONE_ID` | The same hosted-zone ID used in `terraform.tfvars` |
 
@@ -81,6 +82,11 @@ Do this bootstrap and set the repository variables before merging the initial
 implementation to `main`, because that merge triggers the first automated
 apply.
 
+If the initial merge has already happened, perform the local apply, set the
+four repository variables, and rerun the **Apply** workflow on the `main`
+branch. The workflow checks for missing variables before requesting AWS
+credentials and reports each missing name immediately.
+
 ## GitHub Actions Credentials
 
 The workflows do not use an IAM user or stored AWS access keys. On `main`,
@@ -88,15 +94,20 @@ GitHub issues an OIDC identity token and exchanges it for a short-lived session
 on the `dyndns-github-actions` role. Its trust policy is restricted to the
 immutable owner and repository IDs of `KandlerLi/dyndns` and the `main` branch.
 
-Pull requests receive no AWS credentials. They run formatting, Terraform
-validation with the backend disabled, and Lambda unit tests. After a merge, the
-apply workflow authenticates through OIDC, creates a saved Terraform plan, and
-applies that exact plan. Concurrent deployments are serialized.
+All pull requests run formatting, Terraform validation with the backend
+disabled, and Lambda unit tests. Pull requests whose branch is in this
+repository also receive a separate read-only OIDC session and run a speculative
+Terraform plan. Plans use `-lock=false`: the role may read this repository's
+state and AWS resource metadata, but cannot write state, read the FRITZ!Box
+secret value, or change infrastructure. Plans are skipped for forked pull
+requests. After a merge, the apply workflow authenticates with the deployment
+role, creates a saved Terraform plan, and applies that exact plan. Concurrent
+deployments are serialized.
 
 The deployment role may manage only the DynDNS backend state and resources. It
-can read its own IAM configuration but cannot modify its own policy or trust
-relationship. Changes to `github-actions.tf` therefore require another local
-apply with your normal administrative/federated identity.
+can read the automation roles' IAM configuration but cannot modify their
+policies or trust relationships. Changes to `github-actions.tf` therefore
+require another local apply with your normal administrative/federated identity.
 
 The FRITZ!Box username and password are a separate concern: they exist only as
 a Secrets Manager value. GitHub Actions neither stores nor reads them, and

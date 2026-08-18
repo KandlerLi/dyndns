@@ -33,3 +33,62 @@ jobs:
 
       - name: Run Lambda unit tests
         run: python3 -m unittest discover -s tests -v
+
+  plan:
+    name: Terraform plan
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: eu-central-1
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+      TF_VAR_route53_zone_id: ${{ vars.ROUTE53_ZONE_ID }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.15.8
+
+      - name: Verify plan configuration
+        env:
+          AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+          AWS_PLAN_ROLE_ARN: ${{ vars.AWS_PLAN_ROLE_ARN }}
+          ROUTE53_ZONE_ID: ${{ vars.ROUTE53_ZONE_ID }}
+        run: |
+          if [[ -z "$AWS_ACCOUNT_ID" ]]; then
+            echo "::error::Missing repository variable AWS_ACCOUNT_ID"
+            exit 1
+          fi
+          if [[ -z "$AWS_PLAN_ROLE_ARN" ]]; then
+            echo "::error::Missing repository variable AWS_PLAN_ROLE_ARN"
+            exit 1
+          fi
+          if [[ -z "$ROUTE53_ZONE_ID" ]]; then
+            echo "::error::Missing repository variable ROUTE53_ZONE_ID"
+            exit 1
+          fi
+
+      - name: Configure read-only AWS credentials
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
+          role-session-name: GitHubPlan-${{ github.run_id }}
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+
+      - name: Initialize Terraform
+        run: terraform init -input=false
+
+      - name: Create speculative plan
+        run: terraform plan -input=false -lock=false -no-color
