@@ -19,6 +19,7 @@ record.
 - A Secrets Manager secret container for HTTP Basic credentials
 - CloudWatch log groups with configurable retention
 - Optional Route53 CNAME records for configured subdomains
+- A GitHub Actions OIDC provider and repository-bound deployment role
 
 The existing Route53 hosted zone is deliberately not created by this module.
 Its ID is a required input, which prevents an accidental duplicate hosted zone.
@@ -56,6 +57,50 @@ terraform apply
 ```
 
 The S3 backend uses `dyndns/terraform.tfstate` and native S3 lock files.
+
+The first apply must be run locally with your normal federated AWS profile. It
+bootstraps the GitHub Actions role as part of the stack. After that apply, add
+these non-secret repository variables under **Settings → Secrets and variables
+→ Actions → Variables**:
+
+| Repository variable | Value |
+|---|---|
+| `AWS_ROLE_ARN` | `terraform output -raw github_actions_role_arn` |
+| `AWS_ACCOUNT_ID` | `terraform output -raw aws_account_id` |
+| `ROUTE53_ZONE_ID` | The same hosted-zone ID used in `terraform.tfvars` |
+
+If the AWS account already has the GitHub Actions OIDC provider, configure the
+existing provider instead of trying to create a duplicate:
+
+```hcl
+create_github_oidc_provider = false
+github_oidc_provider_arn    = "arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com"
+```
+
+Do this bootstrap and set the repository variables before merging the initial
+implementation to `main`, because that merge triggers the first automated
+apply.
+
+## GitHub Actions Credentials
+
+The workflows do not use an IAM user or stored AWS access keys. On `main`,
+GitHub issues an OIDC identity token and exchanges it for a short-lived session
+on the `dyndns-github-actions` role. Its trust policy is restricted to the
+immutable owner and repository IDs of `KandlerLi/dyndns` and the `main` branch.
+
+Pull requests receive no AWS credentials. They run formatting, Terraform
+validation with the backend disabled, and Lambda unit tests. After a merge, the
+apply workflow authenticates through OIDC, creates a saved Terraform plan, and
+applies that exact plan. Concurrent deployments are serialized.
+
+The deployment role may manage only the DynDNS backend state and resources. It
+can read its own IAM configuration but cannot modify its own policy or trust
+relationship. Changes to `github-actions.tf` therefore require another local
+apply with your normal administrative/federated identity.
+
+The FRITZ!Box username and password are a separate concern: they exist only as
+a Secrets Manager value. GitHub Actions neither stores nor reads them, and
+Terraform manages only the empty secret container.
 
 ## Set the FRITZ!Box Credentials
 
@@ -129,6 +174,9 @@ terraform fmt -check -recursive
 terraform init -backend=false
 terraform validate
 ```
+
+GitHub Actions uses the same checks. Action dependencies are pinned to full
+commit hashes rather than mutable version tags.
 
 ## Security Notes
 

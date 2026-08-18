@@ -21,3 +21,13 @@ output "managed_subdomains" {
   description = "Subdomains configured as CNAMEs to the dynamic apex record"
   value       = sort([for record in aws_route53_record.subdomain : record.fqdn])
 }
+
+output "github_actions_role_arn" {
+  description = "Role ARN to save as the GitHub repository variable AWS_ROLE_ARN"
+  value       = aws_iam_role.github_actions.arn
+}
+
+output "aws_account_id" {
+  description = "AWS account ID to save as the GitHub repository variable AWS_ACCOUNT_ID"
+  value       = data.aws_caller_identity.current.account_id
+}

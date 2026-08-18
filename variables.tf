@@ -85,3 +85,46 @@ variable "tags" {
     Project   = "dyndns"
   }
 }
+
+variable "github_actions_role_name" {
+  description = "Name of the AWS role assumed by the main-branch deployment workflow"
+  type        = string
+  default     = "dyndns-github-actions"
+}
+
+variable "create_github_oidc_provider" {
+  description = "Create the account-wide GitHub Actions OIDC provider"
+  type        = bool
+  default     = true
+}
+
+variable "github_oidc_provider_arn" {
+  description = "ARN of an existing GitHub Actions OIDC provider when creation is disabled"
+  type        = string
+  default     = null
+  nullable    = true
+}
+
+variable "github_repository_owner" {
+  description = "GitHub repository owner used in the immutable OIDC subject"
+  type        = string
+  default     = "KandlerLi"
+}
+
+variable "github_repository_owner_id" {
+  description = "Immutable GitHub numeric ID of the repository owner"
+  type        = string
+  default     = "24520951"
+}
+
+variable "github_repository_name" {
+  description = "GitHub repository name used in the immutable OIDC subject"
+  type        = string
+  default     = "dyndns"
+}
+
+variable "github_repository_id" {
+  description = "Immutable GitHub numeric repository ID"
+  type        = string
+  default     = "1316544627"
+}
