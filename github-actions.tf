@@ -2,7 +2,7 @@ data "aws_caller_identity" "current" {}
 
 locals {
   github_oidc_repository    = "repo:${var.github_repository_owner}@${var.github_repository_owner_id}/${var.github_repository_name}@${var.github_repository_id}"
-  github_apply_oidc_subject = "${local.github_oidc_repository}:ref:refs/heads/main"
+  github_apply_oidc_subject = "${local.github_oidc_repository}:environment:production"
   github_plan_oidc_subject  = "${local.github_oidc_repository}:pull_request"
   github_oidc_provider_arn = var.create_github_oidc_provider ? one(
     aws_iam_openid_connect_provider.github[*].arn
