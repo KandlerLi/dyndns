@@ -19,7 +19,8 @@ record.
 - A Secrets Manager secret container for HTTP Basic credentials
 - CloudWatch log groups with configurable retention
 - Optional Route53 CNAME records for configured subdomains
-- A GitHub Actions OIDC provider and repository-bound deployment role
+- A GitHub Actions deployment that uses repository-bound roles managed by the
+  local-only `aws-account-bootstrap` Terraform root
 
 The existing Route53 hosted zone is deliberately not created by this module.
 Its ID is a required input, which prevents an accidental duplicate hosted zone.
@@ -31,7 +32,8 @@ Terraform resource.
 - Terraform 1.10 or newer
 - The `jkandler-terraform-state` S3 backend bucket
 - An existing public Route53 hosted zone for `jkandler.de`
-- AWS credentials that can deploy the resources in this repository
+- AWS credentials that can deploy the resources in this repository when
+  bootstrapping or recovering outside GitHub Actions
 
 Find the hosted-zone ID in the Route53 console or with the AWS CLI:
 
@@ -59,34 +61,26 @@ terraform apply
 
 The S3 backend uses `dyndns/terraform.tfstate` and native S3 lock files.
 
-The first apply must be run locally with your normal federated AWS profile. It
-bootstraps the GitHub Actions role as part of the stack. After that apply, add
-these non-secret repository variables under **Settings → Secrets and variables
-→ Actions → Variables**:
+The account-wide GitHub OIDC provider and the repository-bound plan/apply roles
+are owned by `/home/julian/projects/aws-account-bootstrap`. That Terraform root
+runs only from a trusted local controller with a short-lived administrative or
+bootstrap identity.
+
+After bootstrapping or changing those roles, set these non-secret repository
+variables under **Settings → Secrets and variables → Actions → Variables**:
 
 | Repository variable | Value |
 |---|---|
-| `AWS_ROLE_ARN` | `terraform output -raw github_actions_role_arn` |
-| `AWS_PLAN_ROLE_ARN` | `terraform output -raw github_plan_role_arn` |
-| `AWS_ACCOUNT_ID` | `terraform output -raw aws_account_id` |
+| `AWS_ROLE_ARN` | `terraform -chdir=../aws-account-bootstrap output -raw dyndns_github_actions_role_arn` |
+| `AWS_PLAN_ROLE_ARN` | `terraform -chdir=../aws-account-bootstrap output -raw dyndns_github_plan_role_arn` |
+| `AWS_ACCOUNT_ID` | `terraform -chdir=../aws-account-bootstrap output -raw aws_account_id` |
 | `ROUTE53_ZONE_ID` | The same hosted-zone ID used in `terraform.tfvars` |
 
-If the AWS account already has the GitHub Actions OIDC provider, configure the
-existing provider instead of trying to create a duplicate:
-
-```hcl
-create_github_oidc_provider = false
-github_oidc_provider_arn    = "arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com"
-```
-
-Do this bootstrap and set the repository variables before merging the initial
-implementation to `main`, because that merge triggers the first automated
-apply.
-
-If the initial merge has already happened, perform the local apply, set the
-four repository variables, and rerun the **Apply** workflow on the `main`
-branch. The workflow checks for missing variables before requesting AWS
-credentials and reports each missing name immediately.
+Follow the bootstrap repository's migration and apply runbook. Do not recreate,
+replace, or destroy the existing roles or OIDC provider while transferring
+their Terraform state ownership. The workflow checks for missing repository
+variables before requesting AWS credentials and reports each missing name
+immediately.
 
 ## GitHub Actions Credentials
 
@@ -107,8 +101,8 @@ deployments are serialized.
 
 The deployment role may manage only the DynDNS backend state and resources. It
 can read the automation roles' IAM configuration but cannot modify their
-policies or trust relationships. Changes to `github-actions.tf` therefore
-require another local apply with your normal administrative/federated identity.
+policies or trust relationships. Changes to those roles are made only from the
+local `aws-account-bootstrap` repository.
 
 The FRITZ!Box username and password are a separate concern: they exist only as
 a Secrets Manager value. GitHub Actions neither stores nor reads them, and
