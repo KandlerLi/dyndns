@@ -76,11 +76,10 @@ variables under **Settings → Secrets and variables → Actions → Variables**
 | `AWS_ACCOUNT_ID` | `terraform -chdir=../aws-account-bootstrap output -raw aws_account_id` |
 | `ROUTE53_ZONE_ID` | The same hosted-zone ID used in `terraform.tfvars` |
 
-Follow the bootstrap repository's migration and apply runbook. Do not recreate,
-replace, or destroy the existing roles or OIDC provider while transferring
-their Terraform state ownership. The workflow checks for missing repository
-variables before requesting AWS credentials and reports each missing name
-immediately.
+Follow the bootstrap repository's local apply instructions for identity
+changes. Do not recreate, replace, or destroy the existing roles or OIDC
+provider. The workflow checks for missing repository variables before
+requesting AWS credentials and reports each missing name immediately.
 
 ## GitHub Actions Credentials
 
