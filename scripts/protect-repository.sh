@@ -45,6 +45,7 @@ echo "Restricting GitHub Actions permissions..."
 gh api --method PUT "repos/$repository/actions/permissions" \
   -F enabled=true \
   -f allowed_actions=selected \
+  -F sha_pinning_required=true \
   --silent
 
 gh api --method PUT "repos/$repository/actions/permissions/selected-actions" \
@@ -121,5 +122,5 @@ echo "After merge, approve the production deployment before Terraform receives A
 echo
 echo "Review these remaining credentials/integrations manually:"
 gh api "repos/$repository/keys" --jq '.[] | "deploy key: \(.title) (read_only=\(.read_only))"'
-gh api "repos/$repository/hooks" --jq '.[] | "webhook: \(.config.url) (active=\(.active))"'
-gh api "repos/$repository/installations" --jq '.installations[] | "GitHub App: \(.app_slug)"'
+gh api "repos/$repository/hooks" --jq '.[] | "webhook: id=\(.id) (active=\(.active))"'
+echo "GitHub Apps: https://github.com/$repository/settings/installations"
