@@ -10,7 +10,7 @@ permissions:
 jobs:
   validate:
     name: Validate
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, home, debian]
     timeout-minutes: 10
 
     steps:
@@ -40,7 +40,7 @@ jobs:
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository
     needs: validate
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, home, debian]
     timeout-minutes: 15
     permissions:
       contents: read

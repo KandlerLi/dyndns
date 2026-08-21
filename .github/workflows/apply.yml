@@ -23,7 +23,7 @@ env:
 jobs:
   apply:
     name: Plan and apply
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, home, debian]
     timeout-minutes: 20
     environment: production
 
