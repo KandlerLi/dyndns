@@ -62,7 +62,7 @@ terraform apply
 The S3 backend uses `dyndns/terraform.tfstate` and native S3 lock files.
 
 The account-wide GitHub OIDC provider and the repository-bound plan/apply roles
-are owned by `/home/julian/projects/aws-account-bootstrap`. That Terraform root
+are owned by `/home/julian/projects/bootstrap/repo-infra`. That Terraform root
 runs only from a trusted local controller with a short-lived administrative or
 bootstrap identity.
 
