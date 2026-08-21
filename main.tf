@@ -162,11 +162,3 @@ resource "aws_apigatewayv2_stage" "default" {
     })
   }
 }
-
-resource "aws_lambda_permission" "api_gateway" {
-  statement_id  = "AllowExecutionFromApiGateway"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.updater.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.dyndns.execution_arn}/*/*"
-}
