@@ -2,4 +2,5 @@
 subdomains = [
   "ai",
   "nextcloud",
+  "torrent",
 ]
