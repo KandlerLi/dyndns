@@ -27,13 +27,22 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      packages: write
 
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
+      - name: Log in to GHCR
+        run: >-
+          echo "${{ secrets.GITHUB_TOKEN }}"
+          | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
       - name: Build CI image
-        run: docker build -t dyndns-ci:latest .github/ci
+        run: docker build -t ghcr.io/kandlerli/dyndns-ci:latest .github/ci
+
+      - name: Push CI image
+        run: docker push ghcr.io/kandlerli/dyndns-ci:latest
 
   apply:
     name: Plan and apply
@@ -42,7 +51,14 @@ jobs:
     timeout-minutes: 20
     environment: production
     container:
-      image: dyndns-ci:latest
+      image: ghcr.io/kandlerli/dyndns-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: read
+      id-token: write
+      packages: read
 
     steps:
       - name: Check out repository
