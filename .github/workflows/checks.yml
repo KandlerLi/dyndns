@@ -44,7 +44,6 @@ jobs:
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-      options: --network host
 
     steps:
       - name: Check out repository
@@ -79,7 +78,6 @@ jobs:
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-      options: --network host
     permissions:
       contents: read
       id-token: write
