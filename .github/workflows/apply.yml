@@ -28,6 +28,9 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      uid: ${{ steps.whoami.outputs.uid }}
+      gid: ${{ steps.whoami.outputs.gid }}
 
     steps:
       - name: Check out repository
@@ -44,6 +47,12 @@ jobs:
       - name: Push CI image
         run: docker push ghcr.io/kandlerli/dyndns-ci:latest
 
+      - name: Determine service account identity
+        id: whoami
+        run: |
+          echo "uid=$(id -u)" >> "$GITHUB_OUTPUT"
+          echo "gid=$(id -g)" >> "$GITHUB_OUTPUT"
+
   apply:
     name: Plan and apply
     needs: build-image
@@ -55,6 +64,7 @@ jobs:
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+      options: --user ${{ needs.build-image.outputs.uid }}:${{ needs.build-image.outputs.gid }}
     permissions:
       contents: read
       id-token: write
