@@ -55,6 +55,7 @@ jobs:
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+      options: --network host
     permissions:
       contents: read
       id-token: write
@@ -105,3 +106,7 @@ jobs:
 
       - name: Apply saved plan
         run: terraform apply -input=false -auto-approve tfplan
+
+      - name: Fix workspace permissions for the next job
+        if: always()
+        run: chmod -R a+rwX "$GITHUB_WORKSPACE"
