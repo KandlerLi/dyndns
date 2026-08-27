@@ -43,15 +43,12 @@ aws route53 list-hosted-zones-by-name --dns-name jkandler.de
 
 ## Deploy
 
-Create your local variable file:
-
-```bash
-cp terraform.tfvars.example terraform.tfvars
-```
-
-Set the real `route53_zone_id`. Non-secret shared deployment settings, including
-the subdomain list, live in the committed `deployment.auto.tfvars` file so local
-and CI runs always use the same values. Then deploy:
+`route53_zone_id` has no default, so supply it however's convenient
+(`-var route53_zone_id=...` or `export TF_VAR_route53_zone_id=...`) — the same
+way `website` and `ses-relay` expect it locally, and how CI supplies it from
+the `ROUTE53_ZONE_ID` repository variable. The subdomain list, non-secret, is
+committed directly in `deployment.auto.tfvars` so local and CI runs always use
+the same values.
 
 ```bash
 terraform init
