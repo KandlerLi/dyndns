@@ -19,8 +19,8 @@ record.
 - A Secrets Manager secret container for HTTP Basic credentials
 - CloudWatch log groups with configurable retention
 - Optional Route53 CNAME records for configured subdomains
-- A GitHub Actions deployment that uses repository-bound roles managed by the
-  local-only `aws-account-bootstrap` Terraform root
+- A GitHub Actions deployment that uses repository-bound roles managed by
+  `/home/julian/projects/bootstrap/repo-infra`
 
 The existing Route53 hosted zone is deliberately not created by this module.
 Its ID is a required input, which prevents an accidental duplicate hosted zone.
@@ -66,18 +66,15 @@ are owned by `/home/julian/projects/bootstrap/repo-infra`. That Terraform root
 runs only from a trusted local controller with a short-lived administrative or
 bootstrap identity.
 
-After bootstrapping or changing those roles, set these non-secret repository
-variables under **Settings → Secrets and variables → Actions → Variables**:
+`AWS_ROLE_ARN`, `AWS_PLAN_ROLE_ARN`, and `AWS_ACCOUNT_ID` are set automatically
+by `repo-infra`'s own `terraform apply` (its `modules/repo` writes them as
+`github_actions_variable` resources from the real role ARNs it just created —
+never a manually-pasted value). `ROUTE53_ZONE_ID` is likewise set from
+`repo-infra/config.yml`'s `action_variables` for this repository. Nothing here
+needs a manual step in the GitHub UI.
 
-| Repository variable | Value |
-|---|---|
-| `AWS_ROLE_ARN` | `terraform -chdir=../aws-account-bootstrap output -raw dyndns_github_actions_role_arn` |
-| `AWS_PLAN_ROLE_ARN` | `terraform -chdir=../aws-account-bootstrap output -raw dyndns_github_plan_role_arn` |
-| `AWS_ACCOUNT_ID` | `terraform -chdir=../aws-account-bootstrap output -raw aws_account_id` |
-| `ROUTE53_ZONE_ID` | The same hosted-zone ID used in `terraform.tfvars` |
-
-Follow the bootstrap repository's local apply instructions for identity
-changes. Do not recreate, replace, or destroy the existing roles or OIDC
+Follow `repo-infra`'s own local apply instructions for identity changes. Do
+not recreate, replace, or destroy the existing roles or OIDC
 provider. The workflow checks for missing repository variables before
 requesting AWS credentials and reports each missing name immediately.
 
@@ -100,8 +97,8 @@ deployments are serialized.
 
 The deployment role may manage only the DynDNS backend state and resources. It
 can read the automation roles' IAM configuration but cannot modify their
-policies or trust relationships. Changes to those roles are made only from the
-local `aws-account-bootstrap` repository.
+policies or trust relationships. Changes to those roles are made only from
+`repo-infra`.
 
 The FRITZ!Box username and password are a separate concern: they exist only as
 a Secrets Manager value. GitHub Actions neither stores nor reads them, and
