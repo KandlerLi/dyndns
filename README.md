@@ -121,6 +121,32 @@ minutes to take effect. Use long, randomly generated URL-safe values; avoid
 characters such as `:`, `@`, and `/` because the credentials are inserted into
 the URL authority by the FRITZ!Box.
 
+## ACME DNS-01 Credentials for Traefik
+
+Terraform also creates `traefik-acme-dns01`, a long-lived IAM user scoped
+only to `route53:ChangeResourceRecordSets`/`route53:GetChange` on this one
+hosted zone, and generates its access key pair. This is unrelated to the
+FRITZ!Box DynDNS updater above -- it's what `infra/k3s-apps`' own
+`modules/ingress/` Traefik uses to complete Let's Encrypt's DNS-01
+challenge (via lego's `route53` provider), so certificate issuance never
+depends on any public port being reachable.
+
+Unlike the FRITZ!Box credentials, this one *is* a real Terraform output
+(`sensitive = true` keeps it out of the CLI's own plan/apply summaries, but
+it still lands in state) -- there's no separate derivation step to hide the
+way SES's SMTP password has one, and this repo's state is only ever read by
+short-lived, tightly-scoped roles (see "GitHub Actions Credentials" above).
+
+After apply, copy both outputs into home-infra's SOPS secrets:
+
+```bash
+terraform output -raw acme_dns01_access_key_id
+terraform output -raw acme_dns01_secret_access_key
+```
+
+as `k3s_ingress_acme_dns01_access_key_id` and
+`k3s_ingress_acme_dns01_secret_access_key` respectively.
+
 ## Configure the FRITZ!Box
 
 In the FRITZ!Box internet settings, choose the user-defined/custom Dynamic DNS

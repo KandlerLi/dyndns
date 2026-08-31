@@ -21,3 +21,22 @@ output "managed_subdomains" {
   description = "Subdomains configured as CNAMEs to the dynamic apex record"
   value       = sort([for record in aws_route53_record.subdomain : record.fqdn])
 }
+
+output "acme_dns01_access_key_id" {
+  description = <<-EOT
+    IAM access key ID for Traefik's own ACME DNS-01 route53 provider
+    (lego) -- copy into home-infra's SOPS secrets as
+    k3s_ingress_acme_dns01_access_key_id.
+  EOT
+  value       = aws_iam_access_key.acme_dns01.id
+}
+
+output "acme_dns01_secret_access_key" {
+  description = <<-EOT
+    IAM secret access key for Traefik's own ACME DNS-01 route53
+    provider (lego) -- copy into home-infra's SOPS secrets as
+    k3s_ingress_acme_dns01_secret_access_key.
+  EOT
+  value       = aws_iam_access_key.acme_dns01.secret
+  sensitive   = true
+}
