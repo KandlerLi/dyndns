@@ -100,6 +100,8 @@ jobs:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           role-session-name: GitHubActions-${{ github.run_id }}
           allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+          # See checks.yml's own identical setting for why.
+          action-timeout-s: "90"
 
       - name: Initialize Terraform
         run: terraform init -input=false

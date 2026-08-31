@@ -122,6 +122,58 @@ resource "aws_route53_record" "subdomain" {
   records = ["${var.domain_name}."]
 }
 
+# Long-lived credentials for Traefik's own ACME DNS-01 challenge
+# (infra/k3s-apps' own modules/ingress/, via lego's route53 provider)
+# -- unrelated to the FRITZ!Box DynDNS updater above beyond sharing
+# this same hosted zone, but kept in this repo rather than a new one
+# since it's the same "least-privilege Route53 access" concern this
+# repo already owns. k3s's Traefik runs on-prem, not inside AWS, so
+# there's no role/instance-profile it could assume the way the Lambda
+# above does -- a real access key pair is the only option here.
+# prevent_destroy, matching ses-relay's own smtp user precedent: a
+# real external credential something else depends on, not safe to
+# replace by accident.
+resource "aws_iam_user" "acme_dns01" {
+  name = "traefik-acme-dns01"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "aws_iam_user_policy" "acme_dns01" {
+  name = "route53-dns01-challenge"
+  user = aws_iam_user.acme_dns01.name
+
+  # Scoped to exactly what lego's route53 provider calls: it writes
+  # the challenge TXT record, then polls the change's own propagation
+  # status before returning. AWS_HOSTED_ZONE_ID is passed to Traefik
+  # explicitly (skipping lego's own zone-lookup step), so
+  # ListHostedZonesByName is deliberately not granted here -- this
+  # user can act on this one hosted zone and nothing else.
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "UpdateDns01ChallengeRecord"
+        Effect   = "Allow"
+        Action   = "route53:ChangeResourceRecordSets"
+        Resource = "arn:aws:route53:::hostedzone/${var.route53_zone_id}"
+      },
+      {
+        Sid      = "PollChangeStatus"
+        Effect   = "Allow"
+        Action   = "route53:GetChange"
+        Resource = "arn:aws:route53:::change/*"
+      },
+    ]
+  })
+}
+
+resource "aws_iam_access_key" "acme_dns01" {
+  user = aws_iam_user.acme_dns01.name
+}
+
 resource "aws_apigatewayv2_api" "dyndns" {
   name          = "dyndns"
   protocol_type = "HTTP"
