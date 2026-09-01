@@ -145,19 +145,28 @@ resource "aws_iam_user_policy" "acme_dns01" {
   name = "route53-dns01-challenge"
   user = aws_iam_user.acme_dns01.name
 
-  # Scoped to exactly what lego's route53 provider calls: it writes
-  # the challenge TXT record, then polls the change's own propagation
-  # status before returning. AWS_HOSTED_ZONE_ID is passed to Traefik
-  # explicitly (skipping lego's own zone-lookup step), so
-  # ListHostedZonesByName is deliberately not granted here -- this
-  # user can act on this one hosted zone and nothing else.
+  # Scoped to exactly what lego's route53 provider calls: confirmed
+  # live (2026-09-01) this needs to *read* existing records at the
+  # zone before it writes the challenge TXT record, not just write and
+  # poll -- an initial grant of only ChangeResourceRecordSets/GetChange
+  # failed live with AccessDenied on ListResourceRecordSets the moment
+  # Traefik actually attempted a real DNS-01 challenge. AWS_HOSTED_ZONE_ID
+  # is passed to Traefik explicitly (skipping lego's own zone-lookup
+  # step) -- confirmed directly in lego's own source
+  # (getHostedZoneID returns immediately once HostedZoneID is set,
+  # never reaching the ListHostedZonesByName call), so that one action
+  # is deliberately still not granted -- this user can act on this one
+  # hosted zone and nothing else.
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Sid      = "UpdateDns01ChallengeRecord"
-        Effect   = "Allow"
-        Action   = "route53:ChangeResourceRecordSets"
+        Sid    = "UpdateDns01ChallengeRecord"
+        Effect = "Allow"
+        Action = [
+          "route53:ChangeResourceRecordSets",
+          "route53:ListResourceRecordSets",
+        ]
         Resource = "arn:aws:route53:::hostedzone/${var.route53_zone_id}"
       },
       {
