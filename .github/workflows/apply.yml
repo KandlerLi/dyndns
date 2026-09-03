@@ -9,115 +9,17 @@ on:
 permissions:
   contents: read
   id-token: write
+  packages: write
 
 concurrency:
   group: dyndns-terraform
   cancel-in-progress: false
 
-env:
-  AWS_REGION: eu-central-1
-  TF_IN_AUTOMATION: "true"
-  TF_INPUT: "false"
-  TF_VAR_route53_zone_id: ${{ vars.ROUTE53_ZONE_ID }}
-
 jobs:
-  build-image:
-    name: Build CI image
-    runs-on: [self-hosted, home, debian]
-    timeout-minutes: 10
-    permissions:
-      contents: read
-      packages: write
-    outputs:
-      uid: ${{ steps.whoami.outputs.uid }}
-      gid: ${{ steps.whoami.outputs.gid }}
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Log in to GHCR
-        run: >-
-          echo "${{ secrets.GITHUB_TOKEN }}"
-          | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-      - name: Build CI image
-        run: docker build -t ghcr.io/kandlerli/dyndns-ci:latest .github/ci
-
-      - name: Push CI image
-        run: docker push ghcr.io/kandlerli/dyndns-ci:latest
-
-      - name: Determine service account identity
-        id: whoami
-        run: |
-          echo "uid=$(id -u)" >> "$GITHUB_OUTPUT"
-          echo "gid=$(id -g)" >> "$GITHUB_OUTPUT"
-
-  apply:
-    name: Plan and apply
-    needs: build-image
-    runs-on: [self-hosted, home, debian]
-    timeout-minutes: 20
-    environment: production
-    container:
-      image: ghcr.io/kandlerli/dyndns-ci:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-      options: --user ${{ needs.build-image.outputs.uid }}:${{ needs.build-image.outputs.gid }}
-    permissions:
-      contents: read
-      id-token: write
-      packages: read
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Verify deployment configuration
-        env:
-          AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
-          AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
-          ROUTE53_ZONE_ID: ${{ vars.ROUTE53_ZONE_ID }}
-        run: |
-          if [[ -z "$AWS_ACCOUNT_ID" ]]; then
-            echo "::error::Missing repository variable AWS_ACCOUNT_ID"
-            exit 1
-          fi
-          if [[ -z "$AWS_ROLE_ARN" ]]; then
-            echo "::error::Missing repository variable AWS_ROLE_ARN"
-            exit 1
-          fi
-          if [[ -z "$ROUTE53_ZONE_ID" ]]; then
-            echo "::error::Missing repository variable ROUTE53_ZONE_ID"
-            exit 1
-          fi
-
-      - name: Configure short-lived AWS credentials
-        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
-        with:
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-          role-session-name: GitHubActions-${{ github.run_id }}
-          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
-          # See checks.yml's own identical setting for why.
-          action-timeout-s: "90"
-
-      - name: Initialize Terraform
-        run: terraform init -input=false
-
-      - name: Run checks
-        run: |
-          terraform fmt -check -recursive
-          terraform validate
-          python3 -m unittest discover -s tests -v
-
-      - name: Create saved plan
-        run: terraform plan -input=false -out=tfplan
-
-      - name: Apply saved plan
-        run: terraform apply -input=false -auto-approve tfplan
-
-      - name: Fix workspace permissions for the next job
-        if: always()
-        run: chmod -R a+rwX "$GITHUB_WORKSPACE"
+  terraform:
+    uses: KandlerLi/gha-common/.github/workflows/terraform-apply.yml@v0.0.7
+    with:
+      aws_region: eu-central-1
+      extra_repo_vars: "ROUTE53_ZONE_ID"
+      extra_validate_command: "python3 -m unittest discover -s tests -v"
+    secrets: inherit
