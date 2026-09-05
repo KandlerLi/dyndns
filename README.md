@@ -20,7 +20,7 @@ record.
 - CloudWatch log groups with configurable retention
 - Optional Route53 CNAME records for configured subdomains
 - A GitHub Actions deployment that uses repository-bound roles managed by
-  `/home/julian/projects/bootstrap/repo-infra`
+  `/home/julian/projects/github/repo-infra`
 
 The existing Route53 hosted zone is deliberately not created by this module.
 Its ID is a required input, which prevents an accidental duplicate hosted zone.
@@ -59,7 +59,7 @@ terraform apply
 The S3 backend uses `dyndns/terraform.tfstate` and native S3 lock files.
 
 The account-wide GitHub OIDC provider and the repository-bound plan/apply roles
-are owned by `/home/julian/projects/bootstrap/repo-infra`. That Terraform root
+are owned by `/home/julian/projects/github/repo-infra`. That Terraform root
 runs only from a trusted local controller with a short-lived administrative or
 bootstrap identity.
 
