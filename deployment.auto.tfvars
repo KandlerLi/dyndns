@@ -3,6 +3,7 @@ subdomains = [
   "ai",
   "grafana",
   "home",
+  "k8s",
   "nextcloud",
   "torrent",
 ]
