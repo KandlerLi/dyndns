@@ -25,8 +25,9 @@ output "managed_subdomains" {
 output "acme_dns01_access_key_id" {
   description = <<-EOT
     IAM access key ID for Traefik's own ACME DNS-01 route53 provider
-    (lego) -- copy into home-infra's SOPS secrets as
-    k3s_ingress_acme_dns01_access_key_id.
+    (lego) -- copy into bootstrap/secrets-manager's home-infra/ingress
+    secret as k3s_ingress_acme_dns01_access_key_id (SOPS is gone from
+    this workspace as of the 2026-09-09 cutover).
   EOT
   value       = aws_iam_access_key.acme_dns01.id
 }
@@ -34,8 +35,9 @@ output "acme_dns01_access_key_id" {
 output "acme_dns01_secret_access_key" {
   description = <<-EOT
     IAM secret access key for Traefik's own ACME DNS-01 route53
-    provider (lego) -- copy into home-infra's SOPS secrets as
-    k3s_ingress_acme_dns01_secret_access_key.
+    provider (lego) -- copy into bootstrap/secrets-manager's
+    home-infra/ingress secret as k3s_ingress_acme_dns01_secret_access_key
+    (SOPS is gone from this workspace as of the 2026-09-09 cutover).
   EOT
   value       = aws_iam_access_key.acme_dns01.secret
   sensitive   = true

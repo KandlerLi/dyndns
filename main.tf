@@ -181,6 +181,17 @@ resource "aws_iam_user_policy" "acme_dns01" {
 
 resource "aws_iam_access_key" "acme_dns01" {
   user = aws_iam_user.acme_dns01.name
+
+  # create_before_destroy so a future `terraform apply
+  # -replace=aws_iam_access_key.acme_dns01` (the actual rotation
+  # mechanic -- this resource has no in-place rotation, only
+  # destroy+recreate) mints the new key before deleting the old one.
+  # IAM permits up to 2 access keys per user, so this gives a real
+  # overlap window instead of a moment with zero valid key while
+  # Let's Encrypt renewal could be mid-challenge.
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_apigatewayv2_api" "dyndns" {
