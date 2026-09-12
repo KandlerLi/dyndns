@@ -101,25 +101,28 @@ The FRITZ!Box username and password are a separate concern: they exist only as
 a Secrets Manager value. GitHub Actions neither stores nor reads them, and
 Terraform manages only the empty secret container.
 
-## Set the FRITZ!Box Credentials
+## Set or Rotate the FRITZ!Box Credentials
 
-Terraform creates the secret but intentionally does not create its value. This
-keeps the username and password out of Terraform configuration and state.
+This repo no longer owns the secret container itself -- `dyndns/fritzbox`
+migrated to `bootstrap/secrets-manager` on 2026-09-12 (its own
+`secrets/dyndns/fritzbox/` module dir), the same no-destroy handoff every
+other secret in that repo went through. This root's own Lambda still reads
+it directly (a wildcard ARN grant on `aws_iam_role_policy.lambda`, not a
+resource reference any more), and its `CREDENTIALS_SECRET_ID` environment
+variable is the secret's name, not an ARN this root has any way to compute
+locally.
 
-After the first apply, store a JSON value in the secret:
-
-```bash
-aws secretsmanager put-secret-value \
-  --secret-id "$(terraform output -raw credentials_secret_arn)" \
-  --secret-string '{"username":"fritzbox","password":"replace-with-a-long-random-password"}'
-```
-
-You can also add the secret value through the AWS Secrets Manager console. The
-JSON property names must be `username` and `password`. Warm Lambda instances
-cache the credentials for five minutes, so a rotation can take up to five
-minutes to take effect. Use long, randomly generated URL-safe values; avoid
-characters such as `:`, `@`, and `/` because the credentials are inserted into
-the URL authority by the FRITZ!Box.
+See `bootstrap/secrets-manager/secrets/dyndns/fritzbox/README.md` for the
+full procedure. In short: `put-secret-value` a JSON object with `username`
+and `password` keys, reconfigure the FRITZ!Box's own DynDNS client to match
+(Internet → Permit Access → DynDNS in the router's admin UI -- the router
+has to match too, Terraform/GitHub Actions can't reach it), and verify with
+a real request to `update_endpoint` above rather than trusting a clean
+`put-secret-value` alone. Warm Lambda instances cache the credentials for
+five minutes, so a rotation can take up to five minutes to actually take
+effect. Use long, randomly generated URL-safe values; avoid characters such
+as `:`, `@`, and `/` because the credentials are inserted into the URL
+authority by the FRITZ!Box.
 
 ## ACME DNS-01 Credentials for Traefik
 
