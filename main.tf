@@ -3,6 +3,11 @@ data "aws_route53_zone" "selected" {
   private_zone = false
 }
 
+# Needed only for the wildcard ARN string in aws_iam_role_policy.lambda's
+# own ReadCredentials statement, below -- dyndns/fritzbox migrated to
+# bootstrap/secrets-manager 2026-09-12.
+data "aws_caller_identity" "current" {}
+
 check "hosted_zone_matches_domain" {
   assert {
     condition     = trimsuffix(data.aws_route53_zone.selected.name, ".") == var.domain_name
@@ -21,10 +26,16 @@ data "archive_file" "lambda" {
   }
 }
 
-resource "aws_secretsmanager_secret" "credentials" {
-  name                    = var.credentials_secret_name
-  description             = "HTTP Basic credentials used by the FRITZ!Box DynDNS client"
-  recovery_window_in_days = 7
+# Migrated to bootstrap/secrets-manager 2026-09-12 via the ADR 0006 /
+# ADR 0010 no-destroy handoff: imported there, relinquished here. That
+# repo's own module now sets lifecycle.prevent_destroy -- this
+# resource never had it, an inconsistency corrected on the move.
+removed {
+  from = aws_secretsmanager_secret.credentials
+
+  lifecycle {
+    destroy = false
+  }
 }
 
 resource "aws_cloudwatch_log_group" "lambda" {
@@ -66,10 +77,16 @@ resource "aws_iam_role_policy" "lambda" {
         Resource = "arn:aws:route53:::hostedzone/${var.route53_zone_id}"
       },
       {
+        # Wildcard ARN string, not a resource reference -- the
+        # container migrated to bootstrap/secrets-manager 2026-09-12,
+        # so this root no longer owns it (the trailing -* covers the
+        # random suffix AWS appends, same pattern julian's own grant
+        # and bootstrap/terraform-state's k3s-bootstrap-local grant
+        # both already use for every migrated secret).
         Sid      = "ReadCredentials"
         Effect   = "Allow"
         Action   = "secretsmanager:GetSecretValue"
-        Resource = aws_secretsmanager_secret.credentials.arn
+        Resource = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:${var.credentials_secret_name}-*"
       },
       {
         Sid    = "WriteLambdaLogs"
@@ -99,10 +116,15 @@ resource "aws_lambda_function" "updater" {
 
   environment {
     variables = {
-      DOMAIN_NAME           = var.domain_name
-      HOSTED_ZONE_ID        = var.route53_zone_id
-      RECORD_TTL            = tostring(var.record_ttl)
-      CREDENTIALS_SECRET_ID = aws_secretsmanager_secret.credentials.arn
+      DOMAIN_NAME    = var.domain_name
+      HOSTED_ZONE_ID = var.route53_zone_id
+      RECORD_TTL     = tostring(var.record_ttl)
+      # The secret's own name, not its ARN -- boto3's get_secret_value
+      # resolves either equally well, and the container migrated to
+      # bootstrap/secrets-manager 2026-09-12 so there's no local
+      # resource left to read .arn from. Avoids needing to reconstruct
+      # the ARN (including its AWS-assigned random suffix) here at all.
+      CREDENTIALS_SECRET_ID = var.credentials_secret_name
     }
   }
 
