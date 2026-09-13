@@ -18,6 +18,6 @@ on:
 
 jobs:
   trivy-config:
-    uses: KandlerLi/gha-common/.github/workflows/trivy-config.yml@v0.0.8
+    uses: KandlerLi/gha-common/.github/workflows/trivy-config.yml@v0.0.9
     permissions:
       contents: read
