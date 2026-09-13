@@ -5,6 +5,11 @@ name: Security scan
 # workflow, separate from checks.yml/apply.yml, so a finding here can
 # never block a PR or an apply. See gha-common's own README.md for the
 # reusable workflow's full details.
+#
+# Verified end-to-end via a real push (not a manual workflow_dispatch
+# re-run) by this very comment's own PR, 2026-09-13 -- confirms the full
+# transitive Actions allowlist (repo-infra#2/#3/#4) actually holds up and
+# shows as a normal check alongside apply.yml's, not just via the API.
 
 on:
   push:
