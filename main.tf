@@ -5,7 +5,7 @@ data "aws_route53_zone" "selected" {
 
 # Needed only for the wildcard ARN string in aws_iam_role_policy.lambda's
 # own ReadCredentials statement, below -- dyndns/fritzbox migrated to
-# bootstrap/secrets-manager 2026-09-12.
+# aws/secrets-manager 2026-09-12.
 data "aws_caller_identity" "current" {}
 
 check "hosted_zone_matches_domain" {
@@ -26,7 +26,7 @@ data "archive_file" "lambda" {
   }
 }
 
-# Migrated to bootstrap/secrets-manager 2026-09-12 via the ADR 0006 /
+# Migrated to aws/secrets-manager 2026-09-12 via the ADR 0006 /
 # ADR 0010 no-destroy handoff: imported there, relinquished here. That
 # repo's own module now sets lifecycle.prevent_destroy -- this
 # resource never had it, an inconsistency corrected on the move.
@@ -78,7 +78,7 @@ resource "aws_iam_role_policy" "lambda" {
       },
       {
         # Wildcard ARN string, not a resource reference -- the
-        # container migrated to bootstrap/secrets-manager 2026-09-12,
+        # container migrated to aws/secrets-manager 2026-09-12,
         # so this root no longer owns it (the trailing -* covers the
         # random suffix AWS appends, same pattern julian's own grant
         # and bootstrap/terraform-state's k3s-bootstrap-local grant
@@ -121,7 +121,7 @@ resource "aws_lambda_function" "updater" {
       RECORD_TTL     = tostring(var.record_ttl)
       # The secret's own name, not its ARN -- boto3's get_secret_value
       # resolves either equally well, and the container migrated to
-      # bootstrap/secrets-manager 2026-09-12 so there's no local
+      # aws/secrets-manager 2026-09-12 so there's no local
       # resource left to read .arn from. Avoids needing to reconstruct
       # the ARN (including its AWS-assigned random suffix) here at all.
       CREDENTIALS_SECRET_ID = var.credentials_secret_name

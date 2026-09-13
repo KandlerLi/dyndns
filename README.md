@@ -104,7 +104,7 @@ Terraform manages only the empty secret container.
 ## Set or Rotate the FRITZ!Box Credentials
 
 This repo no longer owns the secret container itself -- `dyndns/fritzbox`
-migrated to `bootstrap/secrets-manager` on 2026-09-12 (its own
+migrated to `aws/secrets-manager` on 2026-09-12 (its own
 `secrets/dyndns/fritzbox/` module dir), the same no-destroy handoff every
 other secret in that repo went through. This root's own Lambda still reads
 it directly (a wildcard ARN grant on `aws_iam_role_policy.lambda`, not a
@@ -112,7 +112,7 @@ resource reference any more), and its `CREDENTIALS_SECRET_ID` environment
 variable is the secret's name, not an ARN this root has any way to compute
 locally.
 
-See `bootstrap/secrets-manager/secrets/dyndns/fritzbox/README.md` for the
+See `aws/secrets-manager/secrets/dyndns/fritzbox/README.md` for the
 full procedure. In short: `put-secret-value` a JSON object with `username`
 and `password` keys, reconfigure the FRITZ!Box's own DynDNS client to match
 (Internet → Permit Access → DynDNS in the router's admin UI -- the router
