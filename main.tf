@@ -8,6 +8,14 @@ data "aws_route53_zone" "selected" {
 # aws/secrets-manager 2026-09-12.
 data "aws_caller_identity" "current" {}
 
+# bootstrap/terraform-state's own shared CMK, looked up by its fixed
+# alias rather than a manually-copied ARN -- fixes trivy's AWS-0017 on
+# both log groups below. Needs kms:DescribeKey/kms:ListAliases on this
+# repo's own apply/plan roles (repo-infra#9).
+data "aws_kms_alias" "shared" {
+  name = "alias/shared"
+}
+
 check "hosted_zone_matches_domain" {
   assert {
     condition     = trimsuffix(data.aws_route53_zone.selected.name, ".") == var.domain_name
@@ -41,11 +49,13 @@ removed {
 resource "aws_cloudwatch_log_group" "lambda" {
   name              = "/aws/lambda/${var.function_name}"
   retention_in_days = var.log_retention_days
+  kms_key_id        = data.aws_kms_alias.shared.target_key_arn
 }
 
 resource "aws_cloudwatch_log_group" "api" {
   name              = "/aws/apigateway/dyndns"
   retention_in_days = var.log_retention_days
+  kms_key_id        = data.aws_kms_alias.shared.target_key_arn
 }
 
 resource "aws_iam_role" "lambda" {
