@@ -1,17 +1,29 @@
 name: Security scan
 
-# Non-blocking trivy config IaC misconfiguration scan -- first step of the
-# workspace-level security audit (PARKED.md). Deliberately its own
-# workflow, separate from checks.yml/apply.yml, so a finding here can
-# never block a PR or an apply. See gha-common's own README.md for the
-# reusable workflow's full details.
+# trivy config IaC misconfiguration scan -- first step of the
+# workspace-level security audit (PARKED.md). Its own workflow, separate
+# from checks.yml/apply.yml, so a finding on the push trigger below can
+# never block an apply (that stays true regardless of the pull_request
+# trigger added here -- apply.yml has no needs: on this job either way).
+# See gha-common's own README.md for the reusable workflow's full
+# details.
 #
 # Verified end-to-end via a real push (not a manual workflow_dispatch
-# re-run) by this very comment's own PR, 2026-09-13 -- confirms the full
-# transitive Actions allowlist (repo-infra#2/#3/#4) actually holds up and
-# shows as a normal check alongside apply.yml's, not just via the API.
+# re-run) by an earlier PR, 2026-09-13 -- confirmed the full transitive
+# Actions allowlist (repo-infra#2/#3/#4) actually holds up and shows as a
+# normal check alongside apply.yml's, not just via the API.
+#
+# pull_request added 2026-09-14 so this can become a required status
+# check (blocking PR merges on any finding, via
+# required_status_check_contexts in repo-infra's own config.yml) --
+# deliberately NOT yet added there: this repo still has 2 open AWS-0017
+# findings (PARKED.md) pending a separate fix, and requiring this check
+# before that lands would block every PR, including the one fixing them,
+# on findings that PR doesn't even touch. Add the required-check entry
+# only once a run against main comes back clean.
 
 on:
+  pull_request:
   push:
     branches: [main]
   workflow_dispatch:

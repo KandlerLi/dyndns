@@ -8,6 +8,14 @@ data "aws_route53_zone" "selected" {
 # aws/secrets-manager 2026-09-12.
 data "aws_caller_identity" "current" {}
 
+# bootstrap/terraform-state's own shared CMK, looked up by its fixed
+# alias rather than a manually-copied ARN -- fixes trivy's AWS-0017 on
+# both log groups below. Needs kms:DescribeKey/kms:ListAliases on this
+# repo's own apply/plan roles (repo-infra#9).
+data "aws_kms_alias" "shared" {
+  name = "alias/shared"
+}
+
 check "hosted_zone_matches_domain" {
   assert {
     condition     = trimsuffix(data.aws_route53_zone.selected.name, ".") == var.domain_name
@@ -41,11 +49,13 @@ removed {
 resource "aws_cloudwatch_log_group" "lambda" {
   name              = "/aws/lambda/${var.function_name}"
   retention_in_days = var.log_retention_days
+  kms_key_id        = data.aws_kms_alias.shared.target_key_arn
 }
 
 resource "aws_cloudwatch_log_group" "api" {
   name              = "/aws/apigateway/dyndns"
   retention_in_days = var.log_retention_days
+  kms_key_id        = data.aws_kms_alias.shared.target_key_arn
 }
 
 resource "aws_iam_role" "lambda" {
@@ -97,6 +107,14 @@ resource "aws_iam_role_policy" "lambda" {
         ]
         Resource = "${aws_cloudwatch_log_group.lambda.arn}:*"
       },
+      {
+        # tracing_config above -- these two don't support resource-level
+        # scoping (AWS X-Ray's own docs list both as requiring "*").
+        Sid      = "WriteXRayTraces"
+        Effect   = "Allow"
+        Action   = ["xray:PutTraceSegments", "xray:PutTelemetryRecords"]
+        Resource = "*"
+      },
     ]
   })
 }
@@ -113,6 +131,14 @@ resource "aws_lambda_function" "updater" {
 
   filename         = data.archive_file.lambda.output_path
   source_code_hash = data.archive_file.lambda.output_base64sha256
+
+  # Fixes trivy's AWS-0066 -- well within X-Ray's free tier (100k traces/
+  # month) for a Lambda this rarely invoked. Needs xray:PutTraceSegments/
+  # PutTelemetryRecords on the execution role, added to
+  # aws_iam_role_policy.lambda below.
+  tracing_config {
+    mode = "Active"
+  }
 
   environment {
     variables = {
@@ -163,9 +189,28 @@ resource "aws_iam_user" "acme_dns01" {
   }
 }
 
-resource "aws_iam_user_policy" "acme_dns01" {
-  name = "route53-dns01-challenge"
-  user = aws_iam_user.acme_dns01.name
+#trivy:ignore:AVD-AWS-0123
+resource "aws_iam_group" "acme_dns01" {
+  # Trivy's AWS-0143 flags policies attached directly to a user (CIS:
+  # apply via groups/roles instead) -- traefik-acme-dns01 is a single
+  # machine credential, not a human console user, so this group will
+  # only ever have this one member, but the group indirection is cheap
+  # and clears the finding without changing the effective permissions
+  # at all.
+  #
+  # That same fix trips AWS-0123 (MFA not enforced for group) in turn --
+  # ignored above rather than fixed: its actual rationale is safeguarding
+  # against *password* compromise, and this group's one member has no
+  # console password or login profile at all, only a raw access key for
+  # programmatic calls. Access-key auth has no session to attach an MFA
+  # condition to (that only applies to assumed-role/temporary session
+  # credentials), so enforcing this would be meaningless at best.
+  name = "acme-dns01-challenge"
+}
+
+resource "aws_iam_group_policy" "acme_dns01" {
+  name  = "route53-dns01-challenge"
+  group = aws_iam_group.acme_dns01.name
 
   # Scoped to exactly what lego's route53 provider calls: confirmed
   # live (2026-09-01) this needs to *read* existing records at the
@@ -199,6 +244,12 @@ resource "aws_iam_user_policy" "acme_dns01" {
       },
     ]
   })
+}
+
+resource "aws_iam_group_membership" "acme_dns01" {
+  name  = "acme-dns01-challenge-members"
+  group = aws_iam_group.acme_dns01.name
+  users = [aws_iam_user.acme_dns01.name]
 }
 
 resource "aws_iam_access_key" "acme_dns01" {
