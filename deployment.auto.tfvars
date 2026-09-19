@@ -7,5 +7,6 @@ subdomains = [
   "k8s",
   "mail",
   "nextcloud",
+  "stalwart",
   "torrent",
 ]
