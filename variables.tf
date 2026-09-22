@@ -63,6 +63,15 @@ variable "credentials_secret_name" {
   default     = "dyndns/fritzbox"
 }
 
+variable "tags" {
+  description = "Tags applied to supported AWS resources"
+  type        = map(string)
+  default = {
+    ManagedBy = "Terraform"
+    Project   = "dyndns"
+  }
+}
+
 variable "log_retention_days" {
   description = "CloudWatch log retention in days"
   type        = number
@@ -74,14 +83,5 @@ variable "log_retention_days" {
       1096, 1827, 2192, 2557, 2922, 3288, 3653,
     ], var.log_retention_days)
     error_message = "log_retention_days must be one of the values supported by CloudWatch Logs."
-  }
-}
-
-variable "tags" {
-  description = "Tags applied to supported AWS resources"
-  type        = map(string)
-  default = {
-    ManagedBy = "Terraform"
-    Project   = "dyndns"
   }
 }

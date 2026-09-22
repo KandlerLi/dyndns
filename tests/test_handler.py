@@ -46,8 +46,10 @@ class HandlerTest(unittest.TestCase):
         )
         handler._cached_credentials = None
         handler._credentials_cached_at = 0.0
-        handler._secrets_client = FakeSecretsManager()
-        handler._route53_client = FakeRoute53()
+        self.secretsmanager = FakeSecretsManager()
+        self.route53 = FakeRoute53()
+        handler._secretsmanager = lambda: self.secretsmanager
+        handler._route53 = lambda: self.route53
 
     @staticmethod
     def authorization(username="fritzbox", password="correct horse battery staple"):
@@ -65,7 +67,7 @@ class HandlerTest(unittest.TestCase):
 
         self.assertEqual(200, response["statusCode"])
         self.assertEqual("good 8.8.8.8", response["body"])
-        request = handler._route53_client.requests[0]
+        request = self.route53.requests[0]
         self.assertEqual("Z123456789", request["HostedZoneId"])
         record = request["ChangeBatch"]["Changes"][0]["ResourceRecordSet"]
         self.assertEqual("jkandler.de", record["Name"])
@@ -78,14 +80,14 @@ class HandlerTest(unittest.TestCase):
 
         self.assertEqual(401, response["statusCode"])
         self.assertEqual("badauth", response["body"])
-        self.assertEqual([], handler._route53_client.requests)
+        self.assertEqual([], self.route53.requests)
 
     def test_rejects_an_unexpected_hostname(self):
         response = handler.lambda_handler(self.event(hostname="evil.example"), None)
 
         self.assertEqual(400, response["statusCode"])
         self.assertEqual("notfqdn", response["body"])
-        self.assertEqual([], handler._route53_client.requests)
+        self.assertEqual([], self.route53.requests)
 
     def test_rejects_private_or_malformed_addresses(self):
         for address in ("192.168.1.1", "not-an-ip", "2001:db8::1"):
@@ -94,13 +96,13 @@ class HandlerTest(unittest.TestCase):
                 self.assertEqual(400, response["statusCode"])
                 self.assertEqual("dnserr", response["body"])
 
-        self.assertEqual([], handler._route53_client.requests)
+        self.assertEqual([], self.route53.requests)
 
     def test_caches_credentials_between_invocations(self):
         handler.lambda_handler(self.event(myip="8.8.8.8"), None)
         handler.lambda_handler(self.event(myip="8.8.4.4"), None)
 
-        self.assertEqual(1, handler._secrets_client.calls)
+        self.assertEqual(1, self.secretsmanager.calls)
 
 
 if __name__ == "__main__":
