@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import functools
 import hmac
 import ipaddress
 import json
@@ -16,31 +17,23 @@ from typing import Any
 LOGGER = logging.getLogger()
 LOGGER.setLevel(logging.INFO)
 
-_route53_client: Any = None
-_secrets_client: Any = None
 _cached_credentials: tuple[str, str] | None = None
 _credentials_cached_at = 0.0
 _CREDENTIAL_CACHE_SECONDS = 300
 
 
-def _client(service_name: str) -> Any:
-    global _route53_client, _secrets_client
+@functools.cache
+def _route53() -> Any:
+    import boto3
 
-    if service_name == "route53":
-        if _route53_client is None:
-            import boto3
+    return boto3.client("route53")
 
-            _route53_client = boto3.client("route53")
-        return _route53_client
 
-    if service_name == "secretsmanager":
-        if _secrets_client is None:
-            import boto3
+@functools.cache
+def _secretsmanager() -> Any:
+    import boto3
 
-            _secrets_client = boto3.client("secretsmanager")
-        return _secrets_client
-
-    raise ValueError(f"Unsupported AWS service: {service_name}")
+    return boto3.client("secretsmanager")
 
 
 def _response(status_code: int, body: str, **headers: str) -> dict[str, Any]:
@@ -65,7 +58,7 @@ def _credentials() -> tuple[str, str]:
     ):
         return _cached_credentials
 
-    response = _client("secretsmanager").get_secret_value(
+    response = _secretsmanager().get_secret_value(
         SecretId=os.environ["CREDENTIALS_SECRET_ID"]
     )
     secret = json.loads(response["SecretString"])
@@ -133,7 +126,7 @@ def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         return _response(400, "dnserr")
 
     try:
-        _client("route53").change_resource_record_sets(
+        _route53().change_resource_record_sets(
             HostedZoneId=os.environ["HOSTED_ZONE_ID"],
             ChangeBatch={
                 "Comment": "Updated by the FRITZ!Box DynDNS endpoint",
