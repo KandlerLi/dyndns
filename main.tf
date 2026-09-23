@@ -212,14 +212,13 @@ resource "aws_iam_group_policy" "acme_dns01" {
   name  = "route53-dns01-challenge"
   group = aws_iam_group.acme_dns01.name
 
-  # Scoped to exactly what lego's route53 provider calls: confirmed
-  # live (2026-09-01) this needs to *read* existing records at the
-  # zone before it writes the challenge TXT record, not just write and
-  # poll -- an initial grant of only ChangeResourceRecordSets/GetChange
-  # failed live with AccessDenied on ListResourceRecordSets the moment
-  # Traefik actually attempted a real DNS-01 challenge. AWS_HOSTED_ZONE_ID
-  # is passed to Traefik explicitly (skipping lego's own zone-lookup
-  # step) -- confirmed directly in lego's own source
+  # Scoped to exactly what lego's route53 provider calls: it needs to
+  # *read* existing records at the zone before it writes the challenge
+  # TXT record, not just write and poll -- see
+  # docs/home-infra-ai-context's current-state.md ("k3s learning
+  # cluster", ingress migration entry) for the AccessDenied this fixed.
+  # AWS_HOSTED_ZONE_ID is passed to Traefik explicitly (skipping lego's
+  # own zone-lookup step) -- confirmed directly in lego's own source
   # (getHostedZoneID returns immediately once HostedZoneID is set,
   # never reaching the ListHostedZonesByName call), so that one action
   # is deliberately still not granted -- this user can act on this one
