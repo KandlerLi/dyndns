@@ -9,7 +9,6 @@ jobs:
     uses: KandlerLi/gha-common/.github/workflows/terraform-checks.yml@v0.0.13
     with:
       aws_region: eu-central-1
-      extra_repo_vars: "ROUTE53_ZONE_ID"
       extra_validate_command: "python3 -m unittest discover -s tests -v"
     secrets: inherit
     permissions:

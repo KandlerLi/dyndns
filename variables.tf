@@ -1,13 +1,11 @@
 variable "aws_region" {
   description = "AWS region in which to deploy the DynDNS service"
   type        = string
-  default     = "eu-central-1"
 }
 
 variable "domain_name" {
   description = "Apex DNS name that the FRITZ!Box updates"
   type        = string
-  default     = "jkandler.de"
 
   validation {
     condition = length(var.domain_name) <= 253 && length(split(".", var.domain_name)) >= 2 && alltrue([
@@ -30,7 +28,6 @@ variable "route53_zone_id" {
 variable "subdomains" {
   description = "Subdomain labels to create as CNAMEs to domain_name; use * for a wildcard"
   type        = set(string)
-  default     = []
 
   validation {
     condition = alltrue([
@@ -43,7 +40,6 @@ variable "subdomains" {
 variable "record_ttl" {
   description = "TTL in seconds for the dynamic A record and subdomain CNAME records"
   type        = number
-  default     = 60
 
   validation {
     condition     = var.record_ttl == floor(var.record_ttl) && var.record_ttl >= 30 && var.record_ttl <= 86400
@@ -54,28 +50,21 @@ variable "record_ttl" {
 variable "function_name" {
   description = "Name of the Lambda function"
   type        = string
-  default     = "dyndns-route53-updater"
 }
 
 variable "credentials_secret_name" {
   description = "Name of the Secrets Manager secret that holds the FRITZ!Box username and password"
   type        = string
-  default     = "dyndns/fritzbox"
 }
 
 variable "tags" {
   description = "Tags applied to supported AWS resources"
   type        = map(string)
-  default = {
-    ManagedBy = "Terraform"
-    Project   = "dyndns"
-  }
 }
 
 variable "log_retention_days" {
   description = "CloudWatch log retention in days"
   type        = number
-  default     = 30
 
   validation {
     condition = contains([
