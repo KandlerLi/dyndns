@@ -18,6 +18,7 @@ tags = {
 subdomains = [
   "ai",
   "auth",
+  "docs",
   "grafana",
   "home",
   "k8s",
