@@ -26,4 +26,5 @@ subdomains = [
   "nextcloud",
   "stalwart",
   "torrent",
+  "vpn",
 ]
