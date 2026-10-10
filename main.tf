@@ -215,7 +215,7 @@ resource "aws_iam_group_policy" "acme_dns01" {
   # Scoped to exactly what lego's route53 provider calls: it needs to
   # *read* existing records at the zone before it writes the challenge
   # TXT record, not just write and poll -- see
-  # docs/home-infra-ai-context's current-state.md ("k3s learning
+  # docs/home-infra-docs' current-state.md ("k3s learning
   # cluster", ingress migration entry) for the AccessDenied this fixed.
   # AWS_HOSTED_ZONE_ID is passed to Traefik explicitly (skipping lego's
   # own zone-lookup step) -- confirmed directly in lego's own source
