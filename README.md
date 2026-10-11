@@ -134,6 +134,27 @@ FRITZ!Box DynDNS updater above -- it's what [`k3s-apps`](https://github.com/Kand
 challenge (via lego's `route53` provider), so certificate issuance never
 depends on any public port being reachable.
 
+It lives in this repo because it is the same least-privilege Route53
+concern, not because it relates to DynDNS. Traefik runs on-prem, outside
+AWS, so there is no role or instance profile it could assume the way the
+Lambda does: an access key pair is the only option. The user has
+`prevent_destroy`, like `ses-relay`'s SMTP user, since an external
+service depends on it.
+
+Its policy is exactly what lego's `route53` provider calls. lego reads
+the zone's existing records before writing the challenge TXT record, so
+`route53:ListResourceRecordSets` is granted alongside the write and the
+change poll (missing it caused an AccessDenied during the ingress
+migration, see `home-infra-docs`' history). `ListHostedZonesByName` is
+deliberately not granted: Traefik gets the zone ID explicitly, and lego's
+source skips the zone lookup once it is set. The user can act on this
+one hosted zone and nothing else.
+
+Rotation is `terraform apply -replace=aws_iam_access_key.acme_dns01`:
+the resource has no in-place rotation, and `create_before_destroy` mints
+the new key before deleting the old one (IAM allows two keys per user),
+so IAM never has a moment without a valid key.
+
 Unlike the FRITZ!Box credentials, this one *is* a real Terraform output
 (`sensitive = true` keeps it out of the CLI's own plan/apply summaries, but
 it still lands in state) -- there's no separate derivation step to hide the
@@ -215,6 +236,13 @@ commit hashes rather than mutable version tags.
 - The Lambda role can update records only in the selected hosted zone and read
   only its own credentials secret.
 - Terraform state and plan files are excluded from Git.
+- The Lambda has X-Ray tracing on (trivy AWS-0066), well within the free
+  tier for how rarely it runs.
+- The ACME user sits in a single-member group so its policy isn't
+  attached to a user directly (trivy AWS-0143). AWS-0123 (MFA not
+  enforced) is suppressed on that group: the user has no console
+  password, only an access key, so there is no session an MFA condition
+  could attach to.
 
 DNS updates return conventional DynDNS response bodies such as `good`,
 `badauth`, `notfqdn`, and `911`. Lambda errors are written to CloudWatch without
