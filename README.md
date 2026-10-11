@@ -20,7 +20,7 @@ record.
 - CloudWatch log groups with configurable retention
 - Optional Route53 CNAME records for configured subdomains
 - A GitHub Actions deployment that uses repository-bound roles managed by
-  `/home/julian/projects/github/repo-infra`
+  [`repo-infra`](https://github.com/KandlerLi/repo-infra)
 
 The existing Route53 hosted zone is deliberately not created by this module.
 Its ID is a required input, which prevents an accidental duplicate hosted zone.
@@ -59,7 +59,7 @@ terraform apply
 The S3 backend uses `dyndns/terraform.tfstate` and native S3 lock files.
 
 The account-wide GitHub OIDC provider and the repository-bound plan/apply roles
-are owned by `/home/julian/projects/github/repo-infra`. That Terraform root
+are owned by [`repo-infra`](https://github.com/KandlerLi/repo-infra). That Terraform root
 runs only from a trusted local controller with a short-lived administrative or
 bootstrap identity.
 
@@ -104,7 +104,7 @@ Terraform manages only the empty secret container.
 ## Set or Rotate the FRITZ!Box Credentials
 
 This repo no longer owns the secret container itself -- `dyndns/fritzbox`
-migrated to `aws/secrets-manager` on 2026-09-12 (its own
+migrated to [`secrets-manager`](https://github.com/KandlerLi/secrets-manager) on 2026-09-12 (its own
 `secrets/dyndns/fritzbox/` module dir), the same no-destroy handoff every
 other secret in that repo went through. This root's own Lambda still reads
 it directly (a wildcard ARN grant on `aws_iam_role_policy.lambda`, not a
@@ -112,7 +112,7 @@ resource reference any more), and its `CREDENTIALS_SECRET_ID` environment
 variable is the secret's name, not an ARN this root has any way to compute
 locally.
 
-See `aws/secrets-manager/secrets/dyndns/fritzbox/README.md` for the
+See [`secrets-manager/secrets/dyndns/fritzbox/README.md`](https://github.com/KandlerLi/secrets-manager/blob/main/secrets/dyndns/fritzbox/README.md) for the
 full procedure. In short: `put-secret-value` a JSON object with `username`
 and `password` keys, reconfigure the FRITZ!Box's own DynDNS client to match
 (Internet → Permit Access → DynDNS in the router's admin UI -- the router
@@ -129,7 +129,7 @@ authority by the FRITZ!Box.
 Terraform also creates `traefik-acme-dns01`, a long-lived IAM user scoped
 only to `route53:ChangeResourceRecordSets`/`route53:GetChange` on this one
 hosted zone, and generates its access key pair. This is unrelated to the
-FRITZ!Box DynDNS updater above -- it's what `infra/k3s-apps`' own
+FRITZ!Box DynDNS updater above -- it's what [`k3s-apps`](https://github.com/KandlerLi/k3s-apps)' own
 `modules/ingress/` Traefik uses to complete Let's Encrypt's DNS-01
 challenge (via lego's `route53` provider), so certificate issuance never
 depends on any public port being reachable.
