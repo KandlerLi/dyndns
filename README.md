@@ -16,9 +16,12 @@ record.
 
 - An API Gateway HTTP API with a throttled `GET /nic/update` route
 - A Python 3.14 Lambda function with least-privilege IAM permissions
-- A Secrets Manager secret container for HTTP Basic credentials
+- Read access to the FRITZ!Box credentials secret, which lives in
+  [`secrets-manager`](https://github.com/KandlerLi/secrets-manager)
 - CloudWatch log groups with configurable retention
 - Optional Route53 CNAME records for configured subdomains
+- An IAM user and access key for Traefik's ACME DNS-01 challenge, see
+  "ACME DNS-01 Credentials for Traefik" below
 - A GitHub Actions deployment that uses repository-bound roles managed by
   [`repo-infra`](https://github.com/KandlerLi/repo-infra)
 
@@ -104,15 +107,14 @@ Terraform manages only the empty secret container.
 ## Set or Rotate the FRITZ!Box Credentials
 
 This repo no longer owns the secret container itself -- `dyndns/fritzbox`
-migrated to [`secrets-manager`](https://github.com/KandlerLi/secrets-manager) on 2026-09-12 (its own
-`secrets/dyndns/fritzbox/` module dir), the same no-destroy handoff every
-other secret in that repo went through. This root's own Lambda still reads
+migrated to [`secrets-manager`](https://github.com/KandlerLi/secrets-manager) on 2026-09-12, the
+same no-destroy handoff every other secret in that repo went through. This root's own Lambda still reads
 it directly (a wildcard ARN grant on `aws_iam_role_policy.lambda`, not a
 resource reference any more), and its `CREDENTIALS_SECRET_ID` environment
 variable is the secret's name, not an ARN this root has any way to compute
 locally.
 
-See [`secrets-manager/secrets/dyndns/fritzbox/README.md`](https://github.com/KandlerLi/secrets-manager/blob/main/secrets/dyndns/fritzbox/README.md) for the
+See [`secrets-manager`'s `dyndns/fritzbox` runbook](https://github.com/KandlerLi/secrets-manager/blob/main/runbooks/dyndns/fritzbox.md) for the
 full procedure. In short: `put-secret-value` a JSON object with `username`
 and `password` keys, reconfigure the FRITZ!Box's own DynDNS client to match
 (Internet → Permit Access → DynDNS in the router's admin UI -- the router
@@ -127,8 +129,8 @@ authority by the FRITZ!Box.
 ## ACME DNS-01 Credentials for Traefik
 
 Terraform also creates `traefik-acme-dns01`, a long-lived IAM user scoped
-only to `route53:ChangeResourceRecordSets`/`route53:GetChange` on this one
-hosted zone, and generates its access key pair. This is unrelated to the
+to `route53:ChangeResourceRecordSets`/`ListResourceRecordSets` on this one
+hosted zone plus `route53:GetChange`, and generates its access key pair. This is unrelated to the
 FRITZ!Box DynDNS updater above -- it's what [`k3s-apps`](https://github.com/KandlerLi/k3s-apps)' own
 `modules/ingress/` Traefik uses to complete Let's Encrypt's DNS-01
 challenge (via lego's `route53` provider), so certificate issuance never
@@ -161,7 +163,8 @@ it still lands in state) -- there's no separate derivation step to hide the
 way SES's SMTP password has one, and this repo's state is only ever read by
 short-lived, tightly-scoped roles (see "GitHub Actions Credentials" above).
 
-After apply, copy both outputs into home-infra's SOPS secrets:
+After apply (or a rotation), store both outputs in the AWS Secrets
+Manager secret `home-infra/ingress`:
 
 ```bash
 terraform output -raw acme_dns01_access_key_id
@@ -169,7 +172,11 @@ terraform output -raw acme_dns01_secret_access_key
 ```
 
 as `k3s_ingress_acme_dns01_access_key_id` and
-`k3s_ingress_acme_dns01_secret_access_key` respectively.
+`k3s_ingress_acme_dns01_secret_access_key` respectively, then
+`terraform apply` in [`k3s-apps`](https://github.com/KandlerLi/k3s-apps)
+to roll Traefik onto the new key. The full procedure, including how to
+verify the key really works: [`secrets-manager`'s `home-infra/ingress`
+runbook](https://github.com/KandlerLi/secrets-manager/blob/main/runbooks/home-infra/ingress.md).
 
 ## Configure the FRITZ!Box
 
