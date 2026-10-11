@@ -1,7 +1,7 @@
 name: Security scan
 
 # trivy config IaC misconfiguration scan -- first step of the
-# workspace-level security audit (PARKED.md). Its own workflow, separate
+# workspace-level security audit. Its own workflow, separate
 # from checks.yml/apply.yml, so a finding on the push trigger below can
 # never block an apply (that stays true regardless of the pull_request
 # trigger added here -- apply.yml has no needs: on this job either way).
@@ -17,7 +17,7 @@ name: Security scan
 # check (blocking PR merges on any finding, via
 # required_status_check_contexts in repo-infra's own config.yml) --
 # deliberately NOT yet added there: this repo still has 2 open AWS-0017
-# findings (PARKED.md) pending a separate fix, and requiring this check
+# findings pending a separate fix, and requiring this check
 # before that lands would block every PR, including the one fixing them,
 # on findings that PR doesn't even touch. Add the required-check entry
 # only once a run against main comes back clean.
@@ -34,7 +34,7 @@ jobs:
     # Moved to a GitHub-hosted runner 2026-09-15 -- this scan needs no AWS
     # credentials or in-cluster access, only outbound internet, so there's
     # no reason to contend with apply.yml's terraform job for this repo's
-    # single self-hosted runner replica (PARKED.md's "Trivy scan and
+    # single self-hosted runner replica (the private task list's "Trivy scan and
     # terraform apply serialize on the same self-hosted runner").
     with:
       runs_on: '["ubuntu-latest"]'

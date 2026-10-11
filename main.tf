@@ -5,10 +5,10 @@ data "aws_route53_zone" "selected" {
 
 # Needed only for the wildcard ARN string in aws_iam_role_policy.lambda's
 # own ReadCredentials statement, below -- dyndns/fritzbox migrated to
-# aws/secrets-manager 2026-09-12.
+# KandlerLi/secrets-manager 2026-09-12.
 data "aws_caller_identity" "current" {}
 
-# bootstrap/terraform-state's own shared CMK, looked up by its fixed
+# KandlerLi/terraform-state's own shared CMK, looked up by its fixed
 # alias rather than a manually-copied ARN -- fixes trivy's AWS-0017 on
 # both log groups below. Needs kms:DescribeKey/kms:ListAliases on this
 # repo's own apply/plan roles (repo-infra#9).
@@ -34,7 +34,7 @@ data "archive_file" "lambda" {
   }
 }
 
-# Migrated to aws/secrets-manager 2026-09-12 via the ADR 0006 /
+# Migrated to KandlerLi/secrets-manager 2026-09-12 via the ADR 0006 /
 # ADR 0010 no-destroy handoff: imported there, relinquished here. That
 # repo's own module now sets lifecycle.prevent_destroy -- this
 # resource never had it, an inconsistency corrected on the move.
@@ -88,10 +88,10 @@ resource "aws_iam_role_policy" "lambda" {
       },
       {
         # Wildcard ARN string, not a resource reference -- the
-        # container migrated to aws/secrets-manager 2026-09-12,
+        # container migrated to KandlerLi/secrets-manager 2026-09-12,
         # so this root no longer owns it (the trailing -* covers the
         # random suffix AWS appends, same pattern julian's own grant
-        # and bootstrap/terraform-state's k3s-bootstrap-local grant
+        # and KandlerLi/terraform-state's k3s-bootstrap-local grant
         # both already use for every migrated secret).
         Sid      = "ReadCredentials"
         Effect   = "Allow"
@@ -147,7 +147,7 @@ resource "aws_lambda_function" "updater" {
       RECORD_TTL     = tostring(var.record_ttl)
       # The secret's own name, not its ARN -- boto3's get_secret_value
       # resolves either equally well, and the container migrated to
-      # aws/secrets-manager 2026-09-12 so there's no local
+      # KandlerLi/secrets-manager 2026-09-12 so there's no local
       # resource left to read .arn from. Avoids needing to reconstruct
       # the ARN (including its AWS-assigned random suffix) here at all.
       CREDENTIALS_SECRET_ID = var.credentials_secret_name
@@ -171,7 +171,7 @@ resource "aws_route53_record" "subdomain" {
 }
 
 # Long-lived credentials for Traefik's own ACME DNS-01 challenge
-# (infra/k3s-apps' own modules/ingress/, via lego's route53 provider)
+# (KandlerLi/k3s-apps' own modules/ingress/, via lego's route53 provider)
 # -- unrelated to the FRITZ!Box DynDNS updater above beyond sharing
 # this same hosted zone, but kept in this repo rather than a new one
 # since it's the same "least-privilege Route53 access" concern this
@@ -215,7 +215,7 @@ resource "aws_iam_group_policy" "acme_dns01" {
   # Scoped to exactly what lego's route53 provider calls: it needs to
   # *read* existing records at the zone before it writes the challenge
   # TXT record, not just write and poll -- see
-  # docs/home-infra-docs' history.md ("k3s learning
+  # KandlerLi/home-infra-docs' history.md ("k3s learning
   # cluster", ingress migration entry) for the AccessDenied this fixed.
   # AWS_HOSTED_ZONE_ID is passed to Traefik explicitly (skipping lego's
   # own zone-lookup step) -- confirmed directly in lego's own source
