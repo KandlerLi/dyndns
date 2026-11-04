@@ -10,7 +10,7 @@ on:
 
 jobs:
   trivy-config:
-    uses: KandlerLi/gha-common/.github/workflows/trivy-config.yml@v0.0.9
+    uses: KandlerLi/gha-common/.github/workflows/trivy-config.yml@v0.0.17
     # Needs no AWS or cluster access, so it stays off the self-hosted runner.
     with:
       runs_on: '["ubuntu-latest"]'
@@ -18,6 +18,6 @@ jobs:
       contents: read
 
   gitleaks:
-    uses: KandlerLi/gha-common/.github/workflows/gitleaks.yml@v0.0.12
+    uses: KandlerLi/gha-common/.github/workflows/gitleaks.yml@v0.0.17
     permissions:
       contents: read
