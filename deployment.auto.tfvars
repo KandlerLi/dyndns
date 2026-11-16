@@ -16,7 +16,6 @@ tags = {
 }
 
 subdomains = [
-  "ai",
   "argo",
   "auth",
   "docs",
