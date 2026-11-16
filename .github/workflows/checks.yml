@@ -6,7 +6,7 @@ on:
 
 jobs:
   terraform:
-    uses: KandlerLi/gha-common/.github/workflows/terraform-checks.yml@v1.0.0
+    uses: KandlerLi/gha-common/.github/workflows/terraform-checks.yml@9da5db3a828b57c6acbb902f83bd1fe51fa627d2
     with:
       aws_region: eu-central-1
       extra_validate_command: "python3 -m unittest discover -s tests -v"
