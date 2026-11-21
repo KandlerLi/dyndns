@@ -24,6 +24,7 @@ subdomains = [
   "k8s",
   "mail",
   "nextcloud",
+  "nextcloud-test",
   "stalwart",
   "vault",
   "vpn",
