@@ -23,6 +23,7 @@ subdomains = [
   "home",
   "k8s",
   "mail",
+  "minecraft",
   "nextcloud",
   "stalwart",
   "vault",
